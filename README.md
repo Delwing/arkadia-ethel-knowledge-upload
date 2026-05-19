@@ -44,11 +44,19 @@ http://localhost:5174/oauth-callback.html
 Register that URL in
 `themes/arkadia/src/Controllers/OAuthController.php::getClients()`.
 
+## Hosted build
+
+The `master` branch is auto-published to GitHub Pages from
+[Delwing/arkadia-ethel-knowledge-upload](https://github.com/Delwing/arkadia-ethel-knowledge-upload):
+
+- Plugin: `https://delwing.github.io/arkadia-ethel-knowledge-upload/plugin.js`
+- Callback: `https://delwing.github.io/arkadia-ethel-knowledge-upload/oauth-callback.html`
+
 ## Install in the Arkadia client
 
 1. Open the Arkadia Web Client.
-2. In the plugin manager, add a plugin URL pointing to `dist/plugin.js`
-   (e.g. `http://localhost:5174/plugin.js`).
+2. In the plugin manager, add a plugin URL pointing to `plugin.js`. Use the
+   hosted build above, or `http://localhost:5174/plugin.js` for local dev.
 3. Open the `⋮` popup menu → "Wyslij wiedze do CMS".
 4. Click "Zaloguj" to complete the OAuth flow once.
 5. Optionally enable "Wysylaj automatycznie wiedze tej postaci" to auto-upload
