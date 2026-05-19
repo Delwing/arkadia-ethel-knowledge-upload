@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Arkadia OAuth - logowanie zakonczone</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    main {
+      max-width: 520px;
+      padding: 1.5rem 2rem;
+      background: #242424;
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+    h1 { margin-top: 0; font-size: 1.2rem; }
+    code {
+      display: block;
+      padding: 0.5rem;
+      background: #111;
+      border-radius: 4px;
+      word-break: break-all;
+      margin: 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .ok { color: #6cf08a; }
+    .err { color: #ff7676; }
+  </style>
+</head>
+<body>
+  <main id="root">
+    <h1>Logowanie...</h1>
+    <p>Trwa przekazywanie kodu autoryzacji do klienta Arkadii.</p>
+  </main>
+  <script>
+    (function () {
+      var root = document.getElementById('root');
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get('code');
+      var state = params.get('state');
+      var error = params.get('error');
+      var errorDescription = params.get('error_description');
+
+      var payload = {
+        type: 'arkadia-oauth-callback',
+        code: code,
+        state: state,
+        error: error,
+        errorDescription: errorDescription
+      };
+
+      // Iframe-embedded silent reauth: parent !== self
+      var parent = window.parent;
+      if (parent && parent !== window) {
+        try {
+          parent.postMessage(payload, '*');
+          root.innerHTML = '<h1 class="ok">OK</h1>';
+          return;
+        } catch (err) {
+          // fall through
+        }
+      }
+
+      var opener = window.opener;
+      if (opener && !opener.closed) {
+        try {
+          opener.postMessage(payload, '*');
+          root.innerHTML =
+            '<h1 class="ok">Mozesz zamknac to okno.</h1>' +
+            '<p>Kod zostal przekazany do klienta.</p>';
+          setTimeout(function () {
+            window.close();
+          }, 800);
+          return;
+        } catch (err) {
+          // fall through to manual display
+        }
+      }
+
+      if (error) {
+        root.innerHTML =
+          '<h1 class="err">Blad autoryzacji</h1>' +
+          '<p>' + (errorDescription || error) + '</p>';
+        return;
+      }
+
+      if (code) {
+        root.innerHTML =
+          '<h1>Skopiuj kod do klienta</h1>' +
+          '<p>Nie udalo sie automatycznie przekazac kodu (brak okna nadrzednego).</p>' +
+          '<p>Skopiuj nizszy kod i wklej go w pluginie:</p>' +
+          '<code>' + code + '</code>' +
+          (state ? '<p>state: <code>' + state + '</code></p>' : '');
+        return;
+      }
+
+      root.innerHTML =
+        '<h1 class="err">Brak parametrow</h1>' +
+        '<p>URL nie zawiera ani <code>code</code>, ani <code>error</code>.</p>';
+    })();
+  </script>
+</body>
+</html>

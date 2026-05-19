@@ -1,0 +1,16 @@
+{
+  "name": "arkadia-wiedza-uploader",
+  "version": "0.2.0",
+  "description": "Arkadia Web Client plugin that uploads a character's wiedza to the Arkadia CMS via OAuth.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --serve"
+  },
+  "devDependencies": {
+    "@arkadia/plugin-types": "https://delwing.github.io/arkadia-web-client-extension/arkadia-plugin-types.tgz",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.8.0"
+  }
+}
