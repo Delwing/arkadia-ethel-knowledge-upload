@@ -16,7 +16,7 @@
 
 import type {PersistentPopupHandle, PluginApi, PluginInfo} from '@arkadia/plugin-types';
 
-const CMS_BASE = 'http://localhost:8000';
+const CMS_BASE = 'https://ethel.pl';
 const AUTHORIZE_URL = `${CMS_BASE}/wp-json/arkadia/v1/oauth/authorize`;
 const TOKEN_URL = `${CMS_BASE}/wp-json/arkadia/v1/oauth/token`;
 const WIEDZA_URL = `${CMS_BASE}/wp-json/arkadia/v1/wiedza/me`;
@@ -529,7 +529,7 @@ function createUi(api: PluginApi): {
     uploadBtn.style.display = validToken ? '' : 'none';
     lead.textContent = validToken
       ? 'Wyslij wiedze postaci na strone Arkadii.'
-      : 'Zaloguj sie do CMS aby wyslac wiedze postaci.';
+      : 'Zaloguj sie na ethel.pl aby wyslac wiedze postaci.';
 
     loginBtn.textContent = validToken ? 'Zaloguj ponownie' : 'Zaloguj';
     loginBtn.className = validToken
@@ -792,7 +792,7 @@ export async function init(api: PluginApi): Promise<PluginInfo> {
     },
   });
 
-  api.ui.addPopupMenuEntry('Wyslij wiedze do CMS', () => {
+  api.ui.addPopupMenuEntry('Wyslij wiedze na ethel.pl', () => {
     if (!popupHandle) return;
     if (popupHandle.isOpen) {
       popupHandle.close();
@@ -811,7 +811,7 @@ export async function init(api: PluginApi): Promise<PluginInfo> {
     name: 'Wiedza Uploader',
     version: '0.2.0',
     author: 'Arkadia',
-    description: 'Wysyla wiedze postaci do CMS przez OAuth (PKCE) z opcja auto-uploadu.',
+    description: 'Wysyla wiedze postaci na ethel.pl przez OAuth (PKCE) z opcja auto-uploadu.',
   };
 }
 
