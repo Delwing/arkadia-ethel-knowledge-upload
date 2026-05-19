@@ -172,6 +172,10 @@ async function readAllEntries(): Promise<KnowledgeEntryRecord[]> {
   }
 }
 
+function titleCaseCharacter(name: string): string {
+  return name.replace(/\b\p{L}+/gu, (word) => word.charAt(0).toLocaleUpperCase() + word.slice(1).toLocaleLowerCase());
+}
+
 function listCharacters(entries: KnowledgeEntryRecord[]): string[] {
   const set = new Set<string>();
   for (const entry of entries) {
@@ -528,7 +532,7 @@ function createUi(api: PluginApi): {
     logoutBtn.style.display = validToken ? '' : 'none';
     uploadBtn.style.display = validToken ? '' : 'none';
     lead.textContent = validToken
-      ? 'Wyslij wiedze postaci na strone Arkadii.'
+      ? 'Wyslij wiedze postaci na strone ethel.pl'
       : 'Zaloguj sie na ethel.pl aby wyslac wiedze postaci.';
 
     loginBtn.textContent = validToken ? 'Zaloguj ponownie' : 'Zaloguj';
@@ -549,7 +553,7 @@ function createUi(api: PluginApi): {
       for (const character of state.characters) {
         const opt = document.createElement('option');
         opt.value = character;
-        opt.textContent = character;
+        opt.textContent = titleCaseCharacter(character);
         if (character === state.selected) opt.selected = true;
         select.appendChild(opt);
       }
@@ -792,7 +796,7 @@ export async function init(api: PluginApi): Promise<PluginInfo> {
     },
   });
 
-  api.ui.addPopupMenuEntry('Wyslij wiedze na ethel.pl', () => {
+  api.ui.addPopupMenuEntry('Wiedza - Ethel.pl', () => {
     if (!popupHandle) return;
     if (popupHandle.isOpen) {
       popupHandle.close();
