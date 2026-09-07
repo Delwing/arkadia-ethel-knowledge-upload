@@ -9,6 +9,8 @@ auto-upload-on-change for a locked character, and silent token refresh.
 - `plugin.ts` — the plugin module; built into `dist/plugin.js`.
 - `plugin.json` — package manifest for the plugin registry (entry point +
   metadata). Keep its `version` in sync with `package.json` and `plugin.ts`.
+- `DESCRIPTION.md` — the plugin's page in the registry, in Polish; published
+  as the readme by the release workflow.
 - `oauth-callback.html` — OAuth redirect target; copied to `dist/` next to
   the bundle so `import.meta.url` resolves it to the same origin.
 
@@ -75,10 +77,13 @@ Then release with:
 git tag v0.3.0 && git push origin v0.3.0
 ```
 
-The workflow refuses to publish when the tag disagrees with the version in
-`package.json`, `plugin.json` or the `PluginInfo` returned by `init()` — the
-registry publishes under the tag but the client displays the one from
-`init()`, so a mismatch would show two different numbers for one release.
+The version comes out of the package, not out of the tag: the registry
+rejects a release whose tag, `plugin.json` and `PluginInfo` disagree, so all
+three have to be bumped together. The workflow only checks `package.json`
+itself, which the registry never sees.
+
+The registry listing's readme is `DESCRIPTION.md` — the Polish, player-facing
+text. `README.md` (this file) is developer documentation and is not published.
 
 Note that a bundle installed from the registry has no sibling
 `oauth-callback.html`, so `callbackUrl()` falls back to the GitHub Pages copy

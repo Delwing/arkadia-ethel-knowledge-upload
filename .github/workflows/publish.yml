@@ -49,24 +49,18 @@ jobs:
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Publikuje wersje $VERSION"
 
-      # Rejestr pokazuje wersje zwrocona przez init(), a publikuje pod wersja
-      # podana tutaj - rozjazd oznaczalby, ze klient raportuje inny numer niz
-      # katalog. Lepiej zatrzymac sie teraz niz wydac taki pakiet.
-      - name: Check version consistency
+      # Wersja pochodzi z pakietu: rejestr sam odrzuca release, w ktorym tag,
+      # plugin.json i PluginInfo sie rozjezdzaja (resolveVersion). Zostaje tu
+      # tylko package.json, ktorego rejestr nie oglada.
+      - name: Check package.json version
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
-          fail=0
-          check() {
-            if [ "$2" != "$VERSION" ]; then
-              echo "::error file=$1::wersja '$2' != '$VERSION'"
-              fail=1
-            fi
-          }
-          check package.json "$(jq -r .version package.json)"
-          check plugin.json "$(jq -r .version plugin.json)"
-          check plugin.ts "$(sed -n "s/.*version: '\([^']*\)'.*/\1/p" plugin.ts | head -1)"
-          exit $fail
+          PKG=$(jq -r .version package.json)
+          if [ "$PKG" != "$VERSION" ]; then
+            echo "::error file=package.json::wersja '$PKG' != '$VERSION'"
+            exit 1
+          fi
 
       - name: Install dependencies
         run: yarn install --network-timeout 100000
@@ -100,7 +94,7 @@ jobs:
             -F "slug=$SLUG" \
             -F "version=$VERSION" \
             -F "changelog=Wydanie $VERSION" \
-            -F "readme=<README.md" \
+            -F "readme=<DESCRIPTION.md" \
             -F "repositoryUrl=$REPOSITORY_URL" \
             -F "file=@plugin.zip" | tee response.json
           echo
