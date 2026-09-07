@@ -85,6 +85,9 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
           REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
+          # Bez pipefail status kroku bierze sie z ostatniego elementu potoku
+          # (jq/tee), wiec nieudana publikacja konczylaby sie "sukcesem".
+          set -o pipefail
           TOKEN=$(curl -sS --fail-with-body \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r '.value')
