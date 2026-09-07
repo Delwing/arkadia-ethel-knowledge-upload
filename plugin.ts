@@ -28,6 +28,10 @@ const AUTO_UPLOAD_STORAGE_KEY = 'plugin:wiedza-uploader:autoCharacter';
 const LAST_HASH_STORAGE_KEY = 'plugin:wiedza-uploader:lastHash';
 const POPUP_ID = 'wiedzaUploader';
 
+/** Where oauth-callback.html is published; registered in the CMS redirect_uris. */
+const HOSTED_CALLBACK_URL =
+  'https://delwing.github.io/arkadia-ethel-knowledge-upload/oauth-callback.html';
+
 const AUTO_UPLOAD_DEBOUNCE_MS = 5000;
 
 const KNOWLEDGE_DB_NAME = 'ArkadiaKnowledgeDetailsDBv2';
@@ -140,10 +144,21 @@ async function pkceChallenge(verifier: string): Promise<string> {
 }
 
 function callbackUrl(): string {
-  // Resolved against the plugin's own module URL so the callback HTML
-  // can live alongside the plugin bundle (wherever it's hosted), instead
-  // of being shipped with the main client.
-  return new URL('./oauth-callback.html', import.meta.url).toString();
+  // The callback HTML ships next to the bundle, so a module-relative URL is
+  // right wherever that file actually is: the GitHub Pages build and the local
+  // dev server. A bundle installed from the plugin registry has no sibling
+  // file - and the registry origin is not in the CMS redirect_uris whitelist
+  // either - so it falls back to the hosted copy.
+  try {
+    const relative = new URL('./oauth-callback.html', import.meta.url);
+    const local = relative.hostname === 'localhost' || relative.hostname === '127.0.0.1';
+    if (local || relative.origin === new URL(HOSTED_CALLBACK_URL).origin) {
+      return relative.toString();
+    }
+  } catch {
+    // import.meta.url unusable (e.g. a blob: module) - use the hosted copy.
+  }
+  return HOSTED_CALLBACK_URL;
 }
 
 function openKnowledgeDb(): Promise<IDBDatabase> {
@@ -813,7 +828,7 @@ export async function init(api: PluginApi): Promise<PluginInfo> {
 
   return {
     name: 'Wiedza Uploader',
-    version: '0.2.0',
+    version: '0.3.0',
     author: 'Dargoth',
     description: 'Wysyla wiedze postaci na ethel.pl przez OAuth (PKCE) z opcja auto-uploadu.',
   };

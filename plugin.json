@@ -1,0 +1,7 @@
+{
+  "name": "Wiedza Uploader",
+  "version": "0.3.0",
+  "author": "Dargoth",
+  "description": "Wysyla wiedze postaci na ethel.pl przez OAuth (PKCE) z opcja auto-uploadu.",
+  "entryPoint": "plugin.ts"
+}

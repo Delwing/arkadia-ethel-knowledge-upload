@@ -1,0 +1,104 @@
+name: Publish plugin
+
+# Publikuje zrodla (plugin.json + plugin.ts) do rejestru pluginow Arkadii.
+# Rejestr sam kompiluje pakiet esbuildem, wiec nie wysylamy gotowego bundla -
+# dzieki temu na stronie pluginu widac prawdziwy kod, a nie wynik builda.
+#
+# Uwierzytelnienie: GitHub OIDC (zaufany wydawca), bez zadnych sekretow.
+# W rejestrze plugin musi juz istniec i miec ustawionego zaufanego wydawce:
+#   repozytorium: Delwing/arkadia-ethel-knowledge-upload
+#   workflow:     publish.yml   (nazwa TEGO pliku - musi sie zgadzac)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Wersja do opublikowania (semver, bez "v")'
+        required: true
+
+env:
+  REGISTRY: https://arkadia-package-repository.vercel.app
+  SLUG: ethel-wiedza-upload
+  AUDIENCE: arkadia-plugins
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # wymagane, zeby GitHub wystawil token OIDC
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Resolve version
+        id: version
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          if [ -n "$VERSION_INPUT" ]; then
+            VERSION="${VERSION_INPUT#v}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publikuje wersje $VERSION"
+
+      # Rejestr pokazuje wersje zwrocona przez init(), a publikuje pod wersja
+      # podana tutaj - rozjazd oznaczalby, ze klient raportuje inny numer niz
+      # katalog. Lepiej zatrzymac sie teraz niz wydac taki pakiet.
+      - name: Check version consistency
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          fail=0
+          check() {
+            if [ "$2" != "$VERSION" ]; then
+              echo "::error file=$1::wersja '$2' != '$VERSION'"
+              fail=1
+            fi
+          }
+          check package.json "$(jq -r .version package.json)"
+          check plugin.json "$(jq -r .version plugin.json)"
+          check plugin.ts "$(sed -n "s/.*version: '\([^']*\)'.*/\1/p" plugin.ts | head -1)"
+          exit $fail
+
+      - name: Install dependencies
+        run: yarn install --network-timeout 100000
+
+      # Rejestr kompiluje pakiet sam i odrzuca go przy pierwszym bledzie, wiec
+      # ten sam bundle budujemy najpierw tutaj - blad kompilacji ma wyjsc przed
+      # publikacja, a nie w odpowiedzi HTTP 400.
+      - name: Build
+        run: yarn build
+
+      - name: Package sources
+        run: zip -r plugin.zip plugin.json plugin.ts
+
+      - name: Publish to Arkadia Plugins
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          TOKEN=$(curl -sS --fail-with-body \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r '.value')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = null ]; then
+            echo "::error::Nie udalo sie pobrac tokenu OIDC"
+            exit 1
+          fi
+          curl -sS --fail-with-body -X POST "$REGISTRY/api/v1/publish" \
+            -H "Authorization: Bearer $TOKEN" \
+            -F "slug=$SLUG" \
+            -F "version=$VERSION" \
+            -F "changelog=Wydanie $VERSION" \
+            -F "readme=<README.md" \
+            -F "repositoryUrl=$REPOSITORY_URL" \
+            -F "file=@plugin.zip" | tee response.json
+          echo
+          jq -r '"Opublikowano \(.slug)@\(.version) -> \(.url)"' response.json >> "$GITHUB_STEP_SUMMARY"

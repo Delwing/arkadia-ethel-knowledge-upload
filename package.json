@@ -1,6 +1,6 @@
 {
   "name": "arkadia-wiedza-uploader",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Arkadia Web Client plugin that uploads a character's wiedza to the Arkadia CMS via OAuth.",
   "private": true,
   "type": "module",

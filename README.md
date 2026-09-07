@@ -7,6 +7,8 @@ auto-upload-on-change for a locked character, and silent token refresh.
 ## Files
 
 - `plugin.ts` — the plugin module; built into `dist/plugin.js`.
+- `plugin.json` — package manifest for the plugin registry (entry point +
+  metadata). Keep its `version` in sync with `package.json` and `plugin.ts`.
 - `oauth-callback.html` — OAuth redirect target; copied to `dist/` next to
   the bundle so `import.meta.url` resolves it to the same origin.
 
@@ -51,6 +53,36 @@ The `master` branch is auto-published to GitHub Pages from
 
 - Plugin: `https://delwing.github.io/arkadia-ethel-knowledge-upload/plugin.js`
 - Callback: `https://delwing.github.io/arkadia-ethel-knowledge-upload/oauth-callback.html`
+
+## Publishing to the plugin registry
+
+`.github/workflows/publish.yml` publishes to
+[Arkadia Plugins](https://arkadia-package-repository.vercel.app) on every `v*`
+tag (or via *Run workflow*). It uploads **sources** — a ZIP of `plugin.json` +
+`plugin.ts` — and the registry compiles them with esbuild, so the plugin page
+shows the real code instead of a build artifact.
+
+Authentication is GitHub OIDC (audience `arkadia-plugins`); there are no
+secrets to configure. One-time setup in the registry dashboard:
+
+1. Create the plugin under the slug `ethel-wiedza-upload`.
+2. Under *Zaufany wydawca*, set repository
+   `Delwing/arkadia-ethel-knowledge-upload` and workflow `publish.yml`.
+
+Then release with:
+
+```
+git tag v0.3.0 && git push origin v0.3.0
+```
+
+The workflow refuses to publish when the tag disagrees with the version in
+`package.json`, `plugin.json` or the `PluginInfo` returned by `init()` — the
+registry publishes under the tag but the client displays the one from
+`init()`, so a mismatch would show two different numbers for one release.
+
+Note that a bundle installed from the registry has no sibling
+`oauth-callback.html`, so `callbackUrl()` falls back to the GitHub Pages copy
+above — that is the URL the CMS must whitelist.
 
 ## Install in the Arkadia client
 
