@@ -836,7 +836,7 @@ export async function init(api: PluginApi): Promise<PluginInfo> {
 
   return {
     name: 'Wiedza Uploader',
-    version: '1.0.2',
+    version: '1.1.0',
     author: 'Dargoth',
     description: 'Wysyla wiedze postaci na ethel.pl przez OAuth (PKCE) z opcja auto-uploadu.',
   };
