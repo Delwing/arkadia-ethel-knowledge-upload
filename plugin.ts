@@ -456,85 +456,89 @@ function createUi(api: PluginApi): {
   let autoUploadInFlight = false;
 
   const root = document.createElement('div');
-  root.className = 'p-3';
+  root.className = 'popup-stack';
+  root.style.boxSizing = 'border-box';
+  root.style.padding = '10px 12px';
   root.style.minWidth = '360px';
 
-  const lead = document.createElement('p');
-  lead.className = 'text-muted small mb-3';
+  const lead = document.createElement('div');
+  lead.className = 'popup-muted popup-small';
   lead.textContent = 'Wyslij wiedze postaci na strone Arkadii.';
   root.appendChild(lead);
 
   const charGroup = document.createElement('div');
-  charGroup.className = 'mb-3';
+  charGroup.className = 'popup-stack popup-stack--sm';
   root.appendChild(charGroup);
 
+  const charField = document.createElement('div');
+  charField.className = 'popup-field';
+  charGroup.appendChild(charField);
+
   const charLabel = document.createElement('label');
-  charLabel.className = 'form-label small mb-1';
+  charLabel.className = 'popup-field__label';
+  charLabel.htmlFor = 'wiedza-uploader-character';
   charLabel.textContent = 'Postac';
-  charGroup.appendChild(charLabel);
+  charField.appendChild(charLabel);
 
   const select = document.createElement('select');
-  select.className = 'form-select form-select-sm';
-  charGroup.appendChild(select);
+  select.className = 'popup-input popup-input--control';
+  select.id = 'wiedza-uploader-character';
+  charField.appendChild(select);
 
   const summary = document.createElement('div');
-  summary.className = 'form-text mt-1';
-  charGroup.appendChild(summary);
+  summary.className = 'popup-field__hint';
+  charField.appendChild(summary);
 
-  const autoUploadWrap = document.createElement('div');
-  autoUploadWrap.className = 'form-check form-switch mt-2';
-  charGroup.appendChild(autoUploadWrap);
+  const autoUploadLabel = document.createElement('label');
+  autoUploadLabel.className = 'popup-check';
+  charGroup.appendChild(autoUploadLabel);
 
   const autoUploadInput = document.createElement('input');
   autoUploadInput.type = 'checkbox';
-  autoUploadInput.className = 'form-check-input';
-  autoUploadInput.id = 'wiedza-uploader-auto';
-  autoUploadWrap.appendChild(autoUploadInput);
+  autoUploadLabel.appendChild(autoUploadInput);
 
-  const autoUploadLabel = document.createElement('label');
-  autoUploadLabel.className = 'form-check-label small';
-  autoUploadLabel.htmlFor = 'wiedza-uploader-auto';
-  autoUploadLabel.textContent = 'Wysylaj automatycznie wiedze tej postaci';
-  autoUploadWrap.appendChild(autoUploadLabel);
+  const autoUploadText = document.createElement('span');
+  autoUploadText.textContent = 'Wysylaj automatycznie wiedze tej postaci';
+  autoUploadLabel.appendChild(autoUploadText);
 
   const buttons = document.createElement('div');
-  buttons.className = 'd-flex flex-wrap gap-2 mb-3';
+  buttons.className = 'popup-row';
   root.appendChild(buttons);
 
   const loginBtn = document.createElement('button');
   loginBtn.type = 'button';
-  loginBtn.className = 'btn btn-sm btn-outline-secondary';
+  loginBtn.className = 'popup-btn popup-btn--control popup-btn--ghost';
   loginBtn.textContent = 'Zaloguj';
   buttons.appendChild(loginBtn);
 
   const logoutBtn = document.createElement('button');
   logoutBtn.type = 'button';
-  logoutBtn.className = 'btn btn-sm btn-outline-danger';
+  logoutBtn.className = 'popup-btn popup-btn--control popup-btn--danger popup-btn--ghost';
   logoutBtn.textContent = 'Wyloguj';
   buttons.appendChild(logoutBtn);
 
   const uploadBtn = document.createElement('button');
   uploadBtn.type = 'button';
-  uploadBtn.className = 'btn btn-sm btn-primary ms-auto';
+  uploadBtn.className = 'popup-btn popup-btn--control popup-btn--solid';
+  uploadBtn.style.marginLeft = 'auto';
   uploadBtn.textContent = 'Wyslij wiedze';
   buttons.appendChild(uploadBtn);
 
   const statusLine = document.createElement('div');
-  statusLine.className = 'small mb-2';
+  statusLine.className = 'popup-small popup-muted';
   statusLine.style.minHeight = '1.25rem';
   root.appendChild(statusLine);
 
   const resultBlock = document.createElement('div');
-  resultBlock.className = 'small';
   root.appendChild(resultBlock);
 
   function setStatus(message: string, kind: UiState['statusKind'] = 'info'): void {
     state.status = message;
     state.statusKind = kind;
-    statusLine.className = 'small mb-2 ' + (
-      kind === 'err' ? 'text-danger'
-      : kind === 'ok' ? 'text-success'
-      : 'text-muted'
+    statusLine.className = 'popup-small ' + (
+      kind === 'err' ? 'popup-text-danger'
+      : kind === 'ok' ? 'popup-text-success'
+      : 'popup-muted'
     );
     statusLine.textContent = message;
   }
@@ -552,8 +556,8 @@ function createUi(api: PluginApi): {
 
     loginBtn.textContent = validToken ? 'Zaloguj ponownie' : 'Zaloguj';
     loginBtn.className = validToken
-      ? 'btn btn-sm btn-outline-secondary'
-      : 'btn btn-sm btn-primary';
+      ? 'popup-btn popup-btn--control popup-btn--ghost'
+      : 'popup-btn popup-btn--control popup-btn--solid';
     loginBtn.disabled = state.busy;
 
     select.innerHTML = '';
@@ -587,30 +591,34 @@ function createUi(api: PluginApi): {
     autoUploadInput.checked = !!state.autoUploadCharacter && state.autoUploadCharacter === state.selected;
     autoUploadInput.disabled = !state.selected || state.busy;
     if (state.autoUploadCharacter && state.autoUploadCharacter !== state.selected) {
-      autoUploadLabel.textContent = `Auto-upload aktywny dla "${state.autoUploadCharacter}" (wybierz te postac aby zmienic).`;
+      autoUploadText.textContent = `Auto-upload aktywny dla "${state.autoUploadCharacter}" (wybierz te postac aby zmienic).`;
     } else {
-      autoUploadLabel.textContent = 'Wysylaj automatycznie wiedze tej postaci';
+      autoUploadText.textContent = 'Wysylaj automatycznie wiedze tej postaci';
     }
 
     resultBlock.innerHTML = '';
     if (state.lastResult) {
       const r = state.lastResult;
-      const alert = document.createElement('div');
-      alert.className = r.unmatched.length > 0 ? 'alert alert-warning py-2 px-3 mb-0' : 'alert alert-success py-2 px-3 mb-0';
+      const notice = document.createElement('div');
+      notice.className = r.unmatched.length > 0
+        ? 'popup-notice popup-notice--warning'
+        : 'popup-notice popup-notice--success';
 
       const summaryRow = document.createElement('div');
-      summaryRow.className = 'fw-semibold mb-1';
+      summaryRow.className = 'popup-strong';
       summaryRow.textContent = `Dopasowano: ${r.total} wpisow w ${Object.keys(r.entries).length} kategoriach.`;
-      alert.appendChild(summaryRow);
+      notice.appendChild(summaryRow);
 
       if (r.unmatched.length > 0) {
         const heading = document.createElement('div');
-        heading.className = 'small text-muted mb-1';
+        heading.className = 'popup-muted';
+        heading.style.marginTop = '6px';
         heading.textContent = `Niedopasowane (${r.unmatched.length}):`;
-        alert.appendChild(heading);
+        notice.appendChild(heading);
 
         const list = document.createElement('ul');
-        list.className = 'small mb-0 ps-3';
+        list.style.margin = '4px 0 0';
+        list.style.paddingLeft = '18px';
         for (const entry of r.unmatched.slice(0, 20)) {
           const li = document.createElement('li');
           li.textContent = entry;
@@ -618,13 +626,13 @@ function createUi(api: PluginApi): {
         }
         if (r.unmatched.length > 20) {
           const li = document.createElement('li');
-          li.className = 'text-muted';
+          li.className = 'popup-muted';
           li.textContent = `... i ${r.unmatched.length - 20} wiecej`;
           list.appendChild(li);
         }
-        alert.appendChild(list);
+        notice.appendChild(list);
       }
-      resultBlock.appendChild(alert);
+      resultBlock.appendChild(notice);
     }
   }
 
