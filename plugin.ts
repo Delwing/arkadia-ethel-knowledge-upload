@@ -9,7 +9,7 @@
  *     (ArkadiaKnowledgeDetailsDBv2 / knowledge_entries store).
  *  2. Authorizes against the CMS via OAuth Authorization Code + PKCE,
  *     client_id = "wiedza-tracker", scope = "update_own_wiedza".
- *  3. POSTs { entries: string[] } to /wp-json/arkadia/v1/wiedza/me.
+ *  3. POSTs { entries: { wpis, category }[] } to /wp-json/arkadia/v1/wiedza/me.
  *
  * See README.md for build / host / OAuth-registration details.
  */
@@ -37,6 +37,27 @@ const AUTO_UPLOAD_DEBOUNCE_MS = 5000;
 const KNOWLEDGE_DB_NAME = 'ArkadiaKnowledgeDetailsDBv2';
 const ENTRIES_STORE = 'knowledge_entries';
 
+/**
+ * Client category base names, in the CMS order: the index is the `category`
+ * the server expects (WiedzaRestController::$categoryNames, wiedza.json).
+ */
+const CATEGORY_ORDER = [
+  'chaos i jego twory',
+  'goblinoidy',
+  'golemy',
+  'istoty demoniczne',
+  'jaszczuroludzie',
+  'magia i jej twory',
+  'nieumarli',
+  'pajaki i pajakowate',
+  'ryboludzie',
+  'smoki i smokowate',
+  'starsze rasy',
+  'stwory pokoniunkcyjne',
+  'szczuroludzie',
+  'wampiry',
+];
+
 interface StoredToken {
   accessToken: string;
   expiresAt: number;
@@ -50,6 +71,12 @@ interface KnowledgeEntryRecord {
   type: 'fight' | 'books' | 'exploration';
   canonical: string;
   updatedAt?: number;
+}
+
+/** One entry as sent to the CMS; `category` is null when it can't be mapped. */
+interface UploadEntry {
+  wpis: string;
+  category: number | null;
 }
 
 interface UploadResponse {
@@ -111,8 +138,8 @@ function saveLastUploadedHash(character: string, hash: string): void {
   localStorage.setItem(`${LAST_HASH_STORAGE_KEY}:${character}`, hash);
 }
 
-function hashEntries(entries: string[]): string {
-  const sorted = [...entries].sort();
+function hashEntries(entries: UploadEntry[]): string {
+  const sorted = entries.map((e) => `${e.category ?? ''}|${e.wpis}`).sort();
   let h = 5381;
   for (const entry of sorted) {
     for (let i = 0; i < entry.length; i++) {
@@ -199,15 +226,51 @@ function listCharacters(entries: KnowledgeEntryRecord[]): string[] {
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
-function flattenEntriesFor(character: string, all: KnowledgeEntryRecord[]): string[] {
+/** Dative forms ("Wiedza o goblinoidach"), same order as CATEGORY_ORDER. */
+const CATEGORY_DATIVE = [
+  'chaosie i jego tworach',
+  'goblinoidach',
+  'golemach',
+  'istotach demonicznych',
+  'jaszczuroludziach',
+  'magii i jej tworach',
+  'nieumarlych',
+  'pajakach i pajakowatych',
+  'ryboludziach',
+  'smokach i smokowatych',
+  'starszych rasach',
+  'stworach pokoniunkcyjnych',
+  'szczuroludziach',
+  'wampirach',
+];
+
+function categoryIndex(category: unknown): number | null {
+  if (typeof category !== 'string') return null;
+  const name = category.trim().toLowerCase().replace(/^(wiedza )?o /, '');
+  const index = CATEGORY_ORDER.indexOf(name);
+  if (index !== -1) return index;
+  const dative = CATEGORY_DATIVE.indexOf(name);
+  return dative === -1 ? null : dative;
+}
+
+/**
+ * One upload entry per (category, text). The same text can belong to several
+ * categories and the game counts it in each, so it is only de-duplicated
+ * within a category (e.g. learned from both fight and books); the server
+ * credits each entry in the category it carries.
+ */
+function flattenEntriesFor(character: string, all: KnowledgeEntryRecord[]): UploadEntry[] {
   const seen = new Set<string>();
-  const result: string[] = [];
+  const result: UploadEntry[] = [];
   for (const entry of all) {
     if (entry.character !== character) continue;
-    const value = typeof entry.canonical === 'string' ? entry.canonical.trim() : '';
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    result.push(value);
+    const wpis = typeof entry.canonical === 'string' ? entry.canonical.trim() : '';
+    if (!wpis) continue;
+    const category = categoryIndex(entry.category);
+    const key = category === null ? `?|${entry.category}|${wpis}` : `${category}|${wpis}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ wpis, category });
   }
   return result;
 }
@@ -404,7 +467,7 @@ async function ensureFreshToken(): Promise<StoredToken | null> {
   return tokenIsValid(existing) ? existing : null;
 }
 
-async function uploadEntries(token: StoredToken, entries: string[]): Promise<UploadResponse> {
+async function uploadEntries(token: StoredToken, entries: UploadEntry[]): Promise<UploadResponse> {
   const response = await fetch(WIEDZA_URL, {
     method: 'POST',
     headers: {
